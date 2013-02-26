@@ -309,11 +309,12 @@ def parseIndexList(text):
     if m is None:
         raise CDMSError, "Parsing cdms_filemap near "+text[0:_NPRINT]
     result = [None]*(nindices+1)
-    for i in range(nindices):
+    #jfp was for i in range(nindices):
+    for i in range(nindices+1):
         s = m.group(i+1)
         if s!='-':
             result[i] = string.atoi(s)
-    result[nindices] = m.group(nindices+1)
+    #jfp was result[nindices] = m.group(nindices+1)
     return result, m.end()
 
 def parseName(text):
@@ -535,6 +536,7 @@ class Dataset(CdmsObj, cuDataset):
         # variable, at any timeslice the level partition is the same.
         if hasattr(self, 'cdms_filemap'):
             self._filemap_ = {}
+            print "jfp in __init__, self.cdms_filemap=",self.cdms_filemap
             filemap = parseFileMap(self.cdms_filemap)
             for varlist, varmap in filemap:
                 for varname in varlist:
