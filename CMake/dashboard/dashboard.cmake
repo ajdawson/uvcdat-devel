@@ -30,9 +30,24 @@ else()
   read_args(master ${CMAKE_SYSTEM_VERSION} "${HOSTNAME}.cmake")
 endif()
 
+# this silly dance is because we use separate repos to write protect the master branch
+# and use the branch name of master on both the master and devel repos
+set(TOPIC_NAME ${PROJECT_BRANCH})
+if(PROJECT_BRANCH STREQUAL "master")
+  set(REPO "git://github.com/UV-CDAT/uvcdat.git")
+else()
+  set(MASTER_REPO "git://github.com/UV-CDAT/uvcdat.git")
+  set(REPO "git://github.com/UV-CDAT/uvcdat-devel.git")
+  if(PROJECT_BRANCH STREQUAL "next")
+    set(TOPIC_NAME "master")
+  endif()
+endif()
+
 # Display build name and project branch we are currently building
+message("[INFO] REPO is ${REPO}")
 message("[INFO] BUILD_NAME is ${BUILD_NAME}")
 message("[INFO] PROJECT_BRANCH is ${PROJECT_BRANCH}")
+message("[INFO] TOPIC_NAME is ${TOPIC_NAME}")
 
 # Detect the processor architecture (should be x86 or X86_64)
 set(PROJECT_BUILD_ARCH ${CMAKE_SYSTEM_PROCESSOR})
@@ -72,9 +87,9 @@ set(CTEST_USE_LAUNCHERS 1)
 set(PLATFORM_SPECIFIC_CACHE_DATA "
     CMAKE_INSTALL_PREFIX:PATH=/usr/local
     CMAKE_C_COMPILER:STRING=gcc
-    CMAKE_C_FLAGS:STRING=-Wall -Wextra -Wcast-qual ${CTEST_COVERAGE_FLAGS}
+    CMAKE_C_FLAGS:STRING=
     CMAKE_CXX_COMPILER:STRING=g++
-    CMAKE_CXX_FLAGS:STRING=-Wall -Wextra -Wunused -Wcast-qual -Wnon-virtual-dtor ${CTEST_COVERAGE_FLAGS}
+    CMAKE_CXX_FLAGS:STRING=
     CMAKE_LINKER=/usr/bin/ld --no-copy-dt-needed-entries -z defs --no-undefined --no-allow-shlib-undefined
     CTEST_USE_LAUNCHERS:BOOL=${CTEST_USE_LAUNCHERS}
   ")
@@ -90,8 +105,11 @@ set(CTEST_SOURCE_DIRECTORY "${DASHROOT}/${CTEST_PROJECT_NAME}/source/${PROJECT_B
 
 # Prepare to do an initial checkout, if necessary
 if(CTEST_UPDATE_COMMAND AND NOT EXISTS "${CTEST_SOURCE_DIRECTORY}")
-  set(CTEST_CHECKOUT_COMMAND
-     "${CTEST_UPDATE_COMMAND} clone --recursive -b ${PROJECT_BRANCH} git://uv-cdat.llnl.gov/uv-cdat.git ${CTEST_SOURCE_DIRECTORY}")
+  if(PROJECT_BRANCH STREQUAL "master")
+    set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} clone --recursive ${REPO} ${CTEST_SOURCE_DIRECTORY}")
+  else()
+    set(CTEST_CHECKOUT_COMMAND "${CTEST_SCRIPT_DIRECTORY}/next_checkout.sh ${CTEST_UPDATE_COMMAND} ${CTEST_SOURCE_DIRECTORY} ${MASTER_REPO} ${REPO} ${TOPIC_NAME}")
+  endif()
 endif()
 
 # On non-continuous or first build of the day, clear the build directory

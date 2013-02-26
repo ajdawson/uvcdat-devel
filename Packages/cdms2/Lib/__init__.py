@@ -56,7 +56,7 @@ try:
 except:
     pass
 
-from restApi import esgfConnection,esgfDataset
+from restApi import esgfConnection,esgfDataset,FacetConnection
 
 MV = MV2
 
@@ -64,7 +64,7 @@ ESMP_HAS_BEEN_INITIALIZED = False
 if not ESMP_HAS_BEEN_INITIALIZED:
     try:
         import ESMP
-        ESMP.ESMP_Initialize()
+        ESMP.ESMP_Initialize(ESMP.ESMP_LOGKIND_NONE)
         # this turns off the PET file logs
         ESMP.ESMP_LogSet(False)
         ESMP_HAS_BEEN_INITIALIZED = True
