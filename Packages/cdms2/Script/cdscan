@@ -585,6 +585,7 @@ def initialize_filemap( filemap, timedict, levdict, timeid, extendDset, splitOnT
         #
         # levdict : (path, levelid) => (levelarray, levelunits, None)
         #
+    print "jfp coming into initialize_filemap, filemap=",filemap
     initfilemap = cdms2.dataset.parseFileMap(extendDset.cdms_filemap)
     dsetdirec = extendDset.directory
     for namelist, slicelist in initfilemap:
@@ -1005,6 +1006,7 @@ def main(argv):
     boundsdict = {}                     # Same as vardict for time bounds
     for path in fileargs:
         path = string.strip(path)
+        print "jfp scanning path=",path
 
         # Check if the path is included
         if includePattern is not None:
@@ -1263,6 +1265,7 @@ def main(argv):
             # End of loop "for varname in varnames"
 
         f.close()
+        print "jfp filemap=",filemap
         # End of loop "for path in fileargs"
 
     #---------------------------------------------------------------------------------------------
@@ -1573,7 +1576,9 @@ def main(argv):
     # Generate the cdms_filemap attribute
     print "jfp prior to Dump to XML, cdms_filemap_list=",cdms_filemap_list
     cdms_filemap = str(cdms_filemap_list)
+    print "jfp2, cdms_filemap_list=",cdms_filemap
     cdms_filemap = string.replace(cdms_filemap, ' ', '')
+    cdms_filemap = string.replace(cdms_filemap, "''", 'None')
     cdms_filemap = string.replace(cdms_filemap, 'None', '-')
     cdms_filemap = string.replace(cdms_filemap, '"', '') #"
     cdms_filemap = string.replace(cdms_filemap, "'", '')
