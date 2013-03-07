@@ -314,7 +314,14 @@ def parseIndexList(text):
         s = m.group(i+1)
         if s!='-':
             result[i] = string.atoi(s)
+<<<<<<< Updated upstream
     #jfp was result[nindices] = m.group(nindices+1)
+=======
+    # was  result[nindices] = m.group(nindices+1), doesn't work with '-' rather than a filename
+    s = m.group(nindices+1)
+    if s!='-':
+        result[nindices] = m.group(nindices+1)
+>>>>>>> Stashed changes
     return result, m.end()
 
 def parseName(text):
