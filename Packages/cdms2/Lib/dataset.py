@@ -310,18 +310,14 @@ def parseIndexList(text):
         raise CDMSError, "Parsing cdms_filemap near "+text[0:_NPRINT]
     result = [None]*(nindices+1)
     #jfp was for i in range(nindices):
-    for i in range(nindices+1):
+    for i in range(nindices):
         s = m.group(i+1)
         if s!='-':
             result[i] = string.atoi(s)
-<<<<<<< Updated upstream
     #jfp was result[nindices] = m.group(nindices+1)
-=======
-    # was  result[nindices] = m.group(nindices+1), doesn't work with '-' rather than a filename
     s = m.group(nindices+1)
     if s!='-':
         result[nindices] = m.group(nindices+1)
->>>>>>> Stashed changes
     return result, m.end()
 
 def parseName(text):
