@@ -8,6 +8,7 @@ import genutil
 import cdtime
 import warnings
 import subprocess
+import tempfile
 
 parser = argparse.ArgumentParser(description= 'Splices two files together')
 
@@ -45,8 +46,8 @@ class CMIP5(object):
             spawn = os.path.join(pwd,spawn)
         try:
             self.spawn=cdms2.open(spawn)
-        except:
-            raise RuntimeError,"Could not load spawn file (%s) into cdms2" % spawn
+        except Exception,err:
+            raise RuntimeError,"Could not load spawn file (%s) into cdms2: %s" % (spawn,err)
         self.origin = self.findOrigin(origin)
 
         self.branch = self.findBranchTime(branch,type)
@@ -61,7 +62,7 @@ class CMIP5(object):
             except:
                 raise RuntimeError,"Could not load origin file (%s) into cdms2" % origin
 
-        pnm = self.spawn.uri.replace(self.spawn.experiment_id,self.spawn.parent_experiment_id)
+        pnm = getattr(self.spawn,"uri",self.spawn.id).replace(self.spawn.experiment_id,self.spawn.parent_experiment_id)
         pnm = pnm.replace("r%ii%ip%i" % (self.spawn.realization,self.spawn.initialization_method,self.spawn.physics_version),self.spawn.parent_experiment_rip)
         self.origin = cdms2.open(pnm)
         return self.origin
@@ -109,8 +110,8 @@ project = None
 # figures out the source
 if args.origin is None or args.branch is None:
     project = loadProject(args.project,args.spawn,origin=args.origin,branch=args.branch,type=args.type)
-    spawn = project.spawn.uri
-    origin =  project.origin.uri
+    spawn = getattr(project.spawn,"uri",project.spawn.id)
+    origin = getattr(project.origin,"uri",project.origin.id)
     branch = project.branch
 else:
     spawn = args.spawn
@@ -120,14 +121,6 @@ else:
 print origin,branch
 tmpnm='tmp.xml'
 
-#Ok we now know what to do let's create the temporary xml file
-# cmd = "%s/bin/cdscan -x %s %s %s %s" % (sys.prefix,tmpnm, args.cdscan, origin, spawn)
-
-# print cmd
-# p = subprocess.Popen(cmd,shell=True,
-#                      stdin=subprocess.PIPE,
-#                      stdout=subprocess.PIPE,
-#                      stderr=subprocess.PIPE)
 
 # print "done?",
 
@@ -136,5 +129,28 @@ def span(file,var='ts'):
     print tc[0],tc[-1]
     return tc
 
+print "project origin:",project.origin
+print "project spawn:",project.spawn
 span(project.origin)
 span(project.spawn)
+
+#tmp = tempfile.mkstemp()#dir='.')
+tmp = tempfile.NamedTemporaryFile()
+#Ok we now know what to do let's create the temporary xml file
+cmd = "%s/bin/cdscan -x %s %s %s %s" % (sys.prefix, tmpnm, args.cdscan, origin, spawn)
+
+print cmd
+p = subprocess.Popen(cmd,shell=True,
+                     stdin=subprocess.PIPE,
+                     stdout=subprocess.PIPE,
+#                     stdout=tmp,
+                     stderr=subprocess.PIPE)
+#                     stderr=tmp)
+
+
+print p.stdout.readlines()
+print p.stderr.readlines()
+
+print tmp.name
+
+
