@@ -628,7 +628,6 @@ def initialize_filemap( filemap, timedict, levdict, timeid, extendDset, splitOnT
             #jfp was for t0, t1, lev0, lev1, path in slicelist:
             #jfp but there might be another variable in slicelist.
             for slicel in slicelist:
-                print "jfp slicel=",slicel
                 t0 = slicel[0]
                 t1 = slicel[1]
                 lev0 = slicel[2]
@@ -824,6 +823,8 @@ def main(argv):
         if len(sarg)>0:
             realargs.append(sarg)
     lastargs = realargs
+    lastargs.sort()
+    # ... sometimes "*.nc" makes more sense if sorted.  first item provides global_attrs.
 
     # Split lastargs into files and datasets
     fileargs = []
@@ -847,12 +848,10 @@ def main(argv):
         print "jfp dset.cdms_filemap=",dset.cdms_filemap
         initfilemap = cdms2.dataset.parseFileMap(dset.cdms_filemap)
         for namelist, slicelist in initfilemap:
-            print "jfp namelist=",namelist,"  slicelist=",slicelist
             #jfp was for t0, t1, lev0, lev1, path in slicelist:
             #jfp but there might be another variable.
             for slicel in slicelist:
                 path = slicel[4]
-                print "jfp path=",path
                 if path==None: path=''
                 dsetfiles.append(os.path.join(dsetdirec, path))
     augmentedArgs = fileargs + dsetfiles
@@ -949,7 +948,6 @@ def main(argv):
         initialize_filemap( filemap, timedict, levdict, timeid, extendDset, splitOnTime, \
                             referenceTime, timeIsLinear, referenceDelta, splitOnLevel, \
                             dirlen, overrideCalendar, calendar )
-        print "jfp after initialize_filemap, referenceTime=",referenceTime," splitOnTime=",splitOnTime
 
         # axisdict : id => transient_axis
         #   for non-partitioned axes only
@@ -1002,7 +1000,6 @@ def main(argv):
     if verbose:
         print 'Scanning files ...'
 
-    print "jfp starting to scan files, filemap="
     pprint.pprint(filemap)
     boundsmap = {}                      # boundsmap : varid => timebounds_id
     boundsdict = {}                     # Same as vardict for time bounds
@@ -1084,7 +1081,6 @@ def main(argv):
         varnames.sort()
         for varname in varnames:
             if basepath=="": basepath=None  #jfp testing
-            print "jfp processing varname=",varname," basepath=",basepath,"<="
 
             # If --var-locate is specified for the variable, match the basename before processing
             if varLocate is not None and varLocate.has_key(varname):
@@ -1273,7 +1269,6 @@ def main(argv):
 
     # Generate varindex, by combining variable names with
     # identical varentry values.
-    print "jfp before computing varindex, filemap="
     pprint.pprint(filemap)
     varindex = []
     varnames = filemap.keys()
@@ -1482,7 +1477,6 @@ def main(argv):
                 if type(item)==types.StringType and item==name:
                     domain[i] = axisobj
 
-        print "jfp before adding bounds variables, varindex="
         pprint.pprint(varindex)
         # Add bounds variables to vardict, varindex
         if axisobj.isTime():
