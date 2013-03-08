@@ -12,6 +12,7 @@ import string
 import cdtime
 import os.path
 import pprint
+pprint = pprint.PrettyPrinter(stream=sys.stderr)
 import copy
 import types
 from cdms2 import cdmsNode
@@ -585,7 +586,7 @@ def initialize_filemap( filemap, timedict, levdict, timeid, extendDset, splitOnT
         #
         # levdict : (path, levelid) => (levelarray, levelunits, None)
         #
-    print "jfp coming into initialize_filemap, filemap=",filemap
+    print >> sys.stderr, "jfp coming into initialize_filemap, filemap=",filemap
     initfilemap = cdms2.dataset.parseFileMap(extendDset.cdms_filemap)
     dsetdirec = extendDset.directory
     for namelist, slicelist in initfilemap:
@@ -604,7 +605,7 @@ def initialize_filemap( filemap, timedict, levdict, timeid, extendDset, splitOnT
                     timeid = timeaxis.id
                 if referenceTime is None:
                     referenceTime = timeaxis.units
-                print "jfp referenceTime=",referenceTime
+                print >> sys.stderr, "jfp referenceTime=",referenceTime
                 if timeIsLinear in [None,1]:
                     timeIsLinear = timeaxis.isLinear()
                     if timeIsLinear:
@@ -661,7 +662,7 @@ def initialize_filemap( filemap, timedict, levdict, timeid, extendDset, splitOnT
 
 #---------------------------------------------------------------------------------------------
 
-verbose = 1
+verbose = 0
 
 def main(argv):
 
@@ -672,7 +673,7 @@ def main(argv):
         args, lastargs = getopt.getopt( \
             argv[1:], "a:c:d:e:f:hi:jl:m:p:qr:s:t:x:", \
             ["include=","include-file=","exclude=","exclude-file=","forecast","time-linear=", \
-             "notrim-lat","var-locate=","ignore-open-error" ] )
+             "notrim-lat","var-locate=","ignore-open-error","verbose=" ] )
     except getopt.error:
         print >> sys.stderr,  sys.exc_value
         print >> sys.stderr,  usage
@@ -802,6 +803,9 @@ def main(argv):
         elif flag=='-x':
             writeToStdout = 0
             xmlpath = arg
+        elif flag=='--verbose':
+            if arg[0]=='0':
+                verbose=0
 
     # If overriding time, process time as vector so that no gaps result
     if overrideTimeLinear is not None:
@@ -846,7 +850,7 @@ def main(argv):
         if not hasattr(dset, 'directory'):
             raise RuntimeError,'Dataset must have a directory attribute: '+path
         dsetdirec = dset.directory
-        print "jfp dset.cdms_filemap=",dset.cdms_filemap
+        print >> sys.stderr, "jfp dset.cdms_filemap=",dset.cdms_filemap
         initfilemap = cdms2.dataset.parseFileMap(dset.cdms_filemap)
         for namelist, slicelist in initfilemap:
             #jfp was for t0, t1, lev0, lev1, path in slicelist:
@@ -1006,7 +1010,7 @@ def main(argv):
     boundsdict = {}                     # Same as vardict for time bounds
     for path in fileargs:
         path = string.strip(path)
-        print "jfp scanning path=",path
+        print >> sys.stderr, "jfp scanning path=",path
 
         # Check if the path is included
         if includePattern is not None:
@@ -1112,7 +1116,7 @@ def main(argv):
             varentry = [None]*9         # [timestart, timeend, levstart, levend, path, timeid, levid, calendar, fctau0]
             varentry[4] = basepath
             varentry[8] = fctau0
-            print "jfp early on, varentry=",varentry
+            print >> sys.stderr, "jfp early on, varentry=",varentry
 
             # Generate a temporary domain entry, and
             # create axis dictionary entries.
@@ -1252,10 +1256,10 @@ def main(argv):
                     fcdict[(basepath, 'fctau0')] = ( [fctau0], None, None )
 
             if filemap.has_key(varname):
-                print "jfp appending to filemap[",varname,"]:",tuple(varentry)
+                print >> sys.stderr, "jfp appending to filemap[",varname,"]:",tuple(varentry)
                 filemap[varname].append(tuple(varentry))
             else:
-                print "jfp setting filemap[",varname,"]=",tuple(varentry)
+                print >> sys.stderr, "jfp setting filemap[",varname,"]=",tuple(varentry)
                 filemap[varname] = [tuple(varentry)]
 
             # Set boundsmap : varid => timebounds_id
@@ -1265,7 +1269,7 @@ def main(argv):
             # End of loop "for varname in varnames"
 
         f.close()
-        print "jfp filemap=",filemap
+        print >> sys.stderr, "jfp filemap=",filemap
         # End of loop "for path in fileargs"
 
     #---------------------------------------------------------------------------------------------
@@ -1514,7 +1518,7 @@ def main(argv):
     cdms_filemap_list = []
     duplicatevars = {}
     for varindexname, varindexvalue in varindex:
-        print "jfp varindexname=",varindexname," varindexvalue=",varindexvalue
+        print >> sys.stderr, "jfp varindexname=",varindexname," varindexvalue=",varindexvalue
         timeCoordToInd, levCoordToInd, linCoordToInd, fcCoordToInd = masterCoordToInd[varindexname[0]]
         newslicedict = {}
         #jfp was for time0, time1, lev0, lev1, path, timename, levname, calendar, fctau0 in varindexvalue:
@@ -1544,12 +1548,12 @@ def main(argv):
         keys = newslicedict.keys()
         keys.sort()
         newslicelist = []
-        print "jfp newslicedict=",newslicedict
+        print >> sys.stderr, "jfp newslicedict=",newslicedict
         for i0,i1,j0,j1,fctau0 in keys:
             path = newslicedict[(i0,i1,j0,j1,fctau0)]
-            print "jfp appending to newslicelist:",[i0, i1, j0, j1, fctau0, path]
+            print >> sys.stderr, "jfp appending to newslicelist:",[i0, i1, j0, j1, fctau0, path]
             newslicelist.append([i0, i1, j0, j1, fctau0, path])
-        print "jfp appending to cdms_filemap_list:",[varindexname, newslicelist]
+        print >> sys.stderr, "jfp appending to cdms_filemap_list:",[varindexname, newslicelist]
         cdms_filemap_list.append([varindexname, newslicelist])
 
     # Check if any duplicated variables are a function of longitude or latitude.
@@ -1574,15 +1578,15 @@ def main(argv):
             print >> sys.stderr,  '\t',varlist,'\t',path1,'\t',path2
 
     # Generate the cdms_filemap attribute
-    print "jfp prior to Dump to XML, cdms_filemap_list=",cdms_filemap_list
+    print >> sys.stderr, "jfp prior to Dump to XML, cdms_filemap_list=",cdms_filemap_list
     cdms_filemap = str(cdms_filemap_list)
-    print "jfp2, cdms_filemap_list=",cdms_filemap
+    print >> sys.stderr, "jfp2, cdms_filemap_list=",cdms_filemap
     cdms_filemap = string.replace(cdms_filemap, ' ', '')
     cdms_filemap = string.replace(cdms_filemap, "''", 'None')
     cdms_filemap = string.replace(cdms_filemap, 'None', '-')
     cdms_filemap = string.replace(cdms_filemap, '"', '') #"
     cdms_filemap = string.replace(cdms_filemap, "'", '')
-    print "jfp prior to Dump to XML, cdms_filemap=",cdms_filemap
+    print >> sys.stderr, "jfp prior to Dump to XML, cdms_filemap=",cdms_filemap
 
     # Dump to XML
     datasetnode = cdmsNode.DatasetNode(datasetid)
@@ -1621,7 +1625,8 @@ def main(argv):
             node.setLinearData(linearnode)
             if verbose:
                 if timeWasOverridden==0:
-                    print "Overriding values for axis '%s'"%axis.id
+                    if verbose:
+                        print "Overriding values for axis '%s'"%axis.id
                 else:
                     print >> sys.stderr,  'Warning, overriding more than one time axis (%s)'%axis.id
             timeWasOverridden = 1

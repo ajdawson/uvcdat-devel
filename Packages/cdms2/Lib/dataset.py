@@ -539,7 +539,7 @@ class Dataset(CdmsObj, cuDataset):
         # variable, at any timeslice the level partition is the same.
         if hasattr(self, 'cdms_filemap'):
             self._filemap_ = {}
-            print "jfp in __init__, self.cdms_filemap=",self.cdms_filemap
+            print >> sys.stdderr, "jfp in __init__, self.cdms_filemap=",self.cdms_filemap
             filemap = parseFileMap(self.cdms_filemap)
             for varlist, varmap in filemap:
                 for varname in varlist:
