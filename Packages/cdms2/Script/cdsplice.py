@@ -45,14 +45,13 @@ class CMIP5(object):
             pwd = os.getcwd()
             print pwd
             spawn = os.path.join(pwd,spawn)
+        self.spawn=cdms2.open(spawn)
         try:
-            self.spawn=cdms2.open(spawn)
+            pass 
         except Exception,err:
             raise RuntimeError,"Could not load spawn file (%s) into cdms2: %s" % (spawn,err)
         self.origin = self.findOrigin(origin)
-
         self.branch = self.findBranchTime(branch,type)
-
 
     def findOrigin(self,origin):
         """Automatically finds the origin from which spawn comes from"""
@@ -154,11 +153,10 @@ p = subprocess.Popen(cmd,shell=True,
 p.wait()
 
 tmp.seek(0)
-print tmp.read()
-tmp.seek(0)
 
-#xml =  tmp.read()
 e = xml.etree.ElementTree.parse(tmp)
 
 d = e.getroot()
 print d.attrib
+from IPython import embed
+embed()
