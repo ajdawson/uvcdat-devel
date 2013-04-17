@@ -9,6 +9,7 @@ import cdtime
 import warnings
 import subprocess
 import tempfile
+import xml
 
 parser = argparse.ArgumentParser(description= 'Splices two files together')
 
@@ -44,14 +45,13 @@ class CMIP5(object):
             pwd = os.getcwd()
             print pwd
             spawn = os.path.join(pwd,spawn)
+        self.spawn=cdms2.open(spawn)
         try:
-            self.spawn=cdms2.open(spawn)
+            pass 
         except Exception,err:
             raise RuntimeError,"Could not load spawn file (%s) into cdms2: %s" % (spawn,err)
         self.origin = self.findOrigin(origin)
-
         self.branch = self.findBranchTime(branch,type)
-
 
     def findOrigin(self,origin):
         """Automatically finds the origin from which spawn comes from"""
@@ -137,20 +137,26 @@ span(project.spawn)
 #tmp = tempfile.mkstemp()#dir='.')
 tmp = tempfile.NamedTemporaryFile()
 #Ok we now know what to do let's create the temporary xml file
-cmd = "%s/bin/cdscan -x %s %s %s %s" % (sys.prefix, tmpnm, args.cdscan, origin, spawn)
+cmd = "%s/bin/cdscan --verbose=0 %s %s %s" % (sys.prefix, args.cdscan, origin, spawn)
 
 print cmd
 p = subprocess.Popen(cmd,shell=True,
                      stdin=subprocess.PIPE,
-                     stdout=subprocess.PIPE,
-#                     stdout=tmp,
+#                     stdout=subprocess.PIPE,
+                     stdout=tmp,
                      stderr=subprocess.PIPE)
 #                     stderr=tmp)
 
 
-print p.stdout.readlines()
-print p.stderr.readlines()
+#print p.stdout.readlines()
+#print p.stderr.readlines()
+p.wait()
 
-print tmp.name
+tmp.seek(0)
 
+e = xml.etree.ElementTree.parse(tmp)
 
+d = e.getroot()
+print d.attrib
+from IPython import embed
+embed()
