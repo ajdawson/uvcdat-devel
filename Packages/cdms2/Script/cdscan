@@ -633,7 +633,8 @@ def initialize_filemap( filemap, timedict, levdict, timeid, extendDset, splitOnT
                 t1 = slicel[1]
                 lev0 = slicel[2]
                 lev1 = slicel[3]
-                path = slicel[4]
+                # slicel[4] is fctau0 except for older xml files where it's the path
+                path = slicel[-1]     # correct for all cdscan-generated xml files
                 if path==None: path=''
                 fullpath = os.path.join(dsetdirec,path)
                 basepath = fullpath[dirlen:]
