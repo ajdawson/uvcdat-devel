@@ -153,10 +153,17 @@ p = subprocess.Popen(cmd,shell=True,
 p.wait()
 
 tmp.seek(0)
+#print tmp.read()
+#tmp.seek(0)
 
 e = xml.etree.ElementTree.parse(tmp)
 
 d = e.getroot()
-print d.attrib
+fm = d.attrib["cdms_filemap"]
+def findN(s,sub,N):
+    return s.replace(sub,"XXX",N-1).find(sub) - (3-len(sub))*(N-1)
+
+f1 = findN(fm,"[",9)
+
 from IPython import embed
 embed()
