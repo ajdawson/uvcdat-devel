@@ -10,6 +10,7 @@ import warnings
 import subprocess
 import tempfile
 import xml
+import numpy
 
 parser = argparse.ArgumentParser(description= 'Splices two files together')
 
@@ -30,13 +31,47 @@ parser.add_argument("-t", "--type",
                     help="format the branch time was passed as")
 parser.add_argument("-x", "--output",
                     help="Output file full path and name\nIf left out then output goes to stdout (screen)")
-parser.add_argument("-c", "--cdscan",
-                    help="Options you would like to send to cdscan while scanning origin and spawn",default="")
+#parser.add_argument("-c", "--cdscan",
+#                    help="Options you would like to send to cdscan while scanning origin and spawn",default="")
 
 args = parser.parse_args(sys.argv[1:])
 
 print args
 #print args.spawn
+def commonprefix(*args):
+    print "Args:",args
+    return os.path.commonprefix(args).rpartition('/')[0]
+   
+def dataTypeAndValue(obj,a):
+    v = getattr(obj,a)
+    if isinstance(v,(numpy.ndarray,cdms2.tvariable.TransientVariable)) and len(v)==1:
+        return dataType(v),v[0]
+    else:
+        return dataType(v),v
+
+def dataType(obj):
+    if isinstance(obj,(numpy.ndarray,cdms2.tvariable.TransientVariable)) and len(obj)==1:
+        if obj.dtype == numpy.float32:
+            return "Float"
+        elif obj.dtype in [numpy.int,numpy.int64]:
+            return "Long"
+        elif obj.dtype == numpy.int32:
+            return "Int"
+        elif obj.dtype in [numpy.float,numpy.float64]:
+            return "Double"
+        
+    if isinstance(obj,(int,numpy.int,numpy.int32,numpy.int64)):
+        return "Long"
+    elif isinstance(obj,(numpy.float32)):
+        return "Float"
+    elif isinstance(obj,(float,numpy.float,numpy.float64)):
+        return "Double"
+    elif isinstance(obj,str):
+        return "String"
+    elif obj is None:
+        return "None"
+    else:
+        raise Exception,"Unknown type (%s) for attribute: %s" % (type(obj),obj)
 
 class CMIP5(object):
     def __init__(self,spawn,origin=None,branch=None,type=None):
@@ -67,6 +102,118 @@ class CMIP5(object):
         self.origin = cdms2.open(pnm)
         return self.origin
 
+    def genXml(self):
+        f=open("crap.xml","w")
+        print >> f, """<?xml version="1.0"?>
+        <!DOCTYPE dataset SYSTEM "http://www-pcmdi.llnl.gov/software/cdms/cdml.dtd">
+        <dataset
+        """
+        ## First figure out which vars are time dep
+        tvars=[]
+        nvars=[]
+        for V in self.spawn.variables:
+            for a in self.spawn[V].getAxisList():
+                if a.isTime():
+                    tvars.append(V)
+                    break
+            else:
+                nvars.append(V)
+        # Find common path
+        cmndir = commonprefix(self.spawn.id,self.origin.id)+"/"
+        print cmndir
+        cdmsfmp="[[%s,[[-,-,-,-,-,%s]]],[%s,[[0,%i,-,-,-,%s],[%i,%i,-,-,-,%s]]]]" % (str(nvars),self.spawn.id.split(cmndir)[1],str(tvars),self.branch,self.origin.id.split(cmndir)[1],self.branch,self.branch+len(self.spawn[tvars[0]].getTime()),self.spawn.id.split(cmndir)[1])
+        ## ok get info from spawn
+        specials = ['institution','calendar','frequency','Conventions','history']
+        for a in specials:
+            if not hasattr(self.spawn,a):
+                continue
+            print >> f,'%s = "%s"' % (a,getattr(self.spawn,a))
+
+        print >> f, 'cdms_filemap = "%s"' % cdmsfmp.replace("'","")
+        print >> f, 'directory = "%s"' % cmndir
+        print >> f, 'id = "none"'
+        print >> f,">"
+
+        for a in self.spawn.attributes:
+            if a in specials:
+                continue
+            A,v = dataTypeAndValue(self.spawn,a)
+            print >>f, '<attr datatype="%s" name="%s" >%s</attr>' % (A,a,v)
+        print >> f, '<attr datatype="String" name="cdsplice_origin">%s</attr>' % self.origin.id
+        print >> f, '<attr datatype="String" name="cdsplice_spawn">%s</attr>' % self.spawn.id
+        print >> f, '<attr datatype="Long" name="cdsplice_branch">%i</attr>' % self.branch
+        print >>f, '<attr datatype="String" name="cdsplice_command">%s</attr>' % " ".join(sys.argv)
+
+        #Ok done with global atributes now dimensions...
+        for d in self.spawn.listdimension():
+            D=self.spawn.dimensionobject(d)
+            specials = ['units','id','length','bounds','long_name','axis','calendar']
+            print >>f,"<axis"
+            print >>f,'  datatype = "%s" ' % dataType(D[0])
+            for a in specials:
+                if not hasattr(D,a):
+                    continue
+                A,v=dataTypeAndValue(D,a)
+                print >>f, '  %s = "%s" ' % (a,v)
+            if D.isTime():
+                print >>f, 'partition = "[0, %i, %i, %i]"' % (self.branch,self.branch,self.branch+len(self.spawn[tvars[0]].getTime()))
+                print >>f, 'name_in_file = "%s"' % D.id
+                print >>f, 'length = "%i"' % (len(D)+self.branch)
+            elif not hasattr(D,"length"):
+                print >>f, '  length = "%i"' % len(D)
+            #Ok now other atrributes
+            print >> f,">"
+            for a in D.attributes:
+                if a in specials:
+                    continue
+                A,v=dataTypeAndValue(D,a)
+                print >>f, '<attr datatype = "%s" name="%s">%s</attr>' % (A,a,v)
+            #now writing dims values
+            numpy.set_printoptions(suppress=True)
+            numpy.set_printoptions(threshold=1e12)
+            if D.isTime():
+                #Fist we get the time from origin
+                T1=self.origin[tvars[0]].getTime().clone()
+                T1.toRelativeTime(D.units,D.getCalendar())
+                e1=T1.asComponentTime()[self.branch]
+                b2=D.asComponentTime()[0]
+                if e1.cmp(b2)>-1:
+                    raise Exception,"Original file time of splicing (%s) is in the future of spawned data (%s)"%(e1,b2)
+                print >>f, numpy.array(T1[:self.branch].tolist()+D[:].tolist())
+            else:
+                print >> f,D[:]
+            print >>f,"</axis>"
+        #At this point all we have left to write are the vars in the file
+        for vr in self.spawn.variables:
+            V=self.spawn[vr]
+            specials = ['id','long_name','units','missing_value']
+            print >>f, "<variable"
+            op=[]
+            for i in range(V.rank()):
+                op.append(slice(0,1))
+            print >>f, "  datatype = '%s' " % dataType(V(*op))
+            for a in specials:
+                if not hasattr(V,a):
+                    continue
+                print "getting:",V.id,a
+                A,v=dataTypeAndValue(V,a)
+                if v is None:
+                    continue
+                print >>f, '  %s = "%s" ' % (a,v)
+            print >> f,'>'
+            for a in V.attributes:
+                if a in specials:
+                    continue
+                A,v=dataTypeAndValue(V,a)
+                print >>f, '<attr datatype = "%s" name="%s">%s</attr>' % (A,a,v)
+            # Now write domain
+            print >>f, "<domain>"
+            for a in V.getAxisList():
+                print >>f, '<domElem start="0" length="%i" name="%s"/>' % (len(a),a.id)
+            print >>f,"</domain>"
+            print >> f, "</variable>"
+        print >>f,"</dataset>"
+
     def findBranchTime(self,branch,type):
         """Automatically figures the branch time if not sent"""
         for v in self.origin.variables:
@@ -91,6 +238,7 @@ class CMIP5(object):
             try:
                 bout,e = t.mapInterval((b,b,'ccb'))
                 tc=t.asComponentTime()
+                print b,bout,e
                 if e-1 != bout:
                     warnings.warn( "Hum something is odd I'm getting more than one index, please report this, command was: %s" % " ".join(sys.argv))
             except Exception,err:
@@ -137,33 +285,33 @@ span(project.spawn)
 #tmp = tempfile.mkstemp()#dir='.')
 tmp = tempfile.NamedTemporaryFile()
 #Ok we now know what to do let's create the temporary xml file
-cmd = "%s/bin/cdscan --verbose=0 %s %s %s" % (sys.prefix, args.cdscan, origin, spawn)
+#cmd = "%s/bin/cdscan --verbose=0 %s %s %s" % (sys.prefix, args.cdscan, origin, spawn)
 
-print cmd
-p = subprocess.Popen(cmd,shell=True,
-                     stdin=subprocess.PIPE,
+#print cmd
+#p = subprocess.Popen(cmd,shell=True,
+#                     stdin=subprocess.PIPE,
 #                     stdout=subprocess.PIPE,
-                     stdout=tmp,
-                     stderr=subprocess.PIPE)
+#                     stdout=tmp,
+#                     stderr=subprocess.PIPE)
 #                     stderr=tmp)
 
 
 #print p.stdout.readlines()
 #print p.stderr.readlines()
-p.wait()
+#p.wait()
 
-tmp.seek(0)
+#tmp.seek(0)
 #print tmp.read()
 #tmp.seek(0)
 
-e = xml.etree.ElementTree.parse(tmp)
+#e = xml.etree.ElementTree.parse(tmp)
 
-d = e.getroot()
-fm = d.attrib["cdms_filemap"]
+#d = e.getroot()
+#fm = d.attrib["cdms_filemap"]
 def findN(s,sub,N):
     return s.replace(sub,"XXX",N-1).find(sub) - (3-len(sub))*(N-1)
 
-f1 = findN(fm,"[",9)
+#f1 = findN(fm,"[",9)
 
-from IPython import embed
-embed()
+project.genXml()
+
