@@ -30,7 +30,8 @@ parser.add_argument("-t", "--type",
                     choices=['component','index','value'],
                     help="format the branch time was passed as")
 parser.add_argument("-x", "--output",
-                    help="Output file full path and name\nIf left out then output goes to stdout (screen)")
+                    help="Output file full path and name\nIf left out then output goes to stdout (screen)",
+                    default='screen')
 #parser.add_argument("-c", "--cdscan",
 #                    help="Options you would like to send to cdscan while scanning origin and spawn",default="")
 
@@ -74,8 +75,9 @@ def dataType(obj):
         raise Exception,"Unknown type (%s) for attribute: %s" % (type(obj),obj)
 
 class CMIP5(object):
-    def __init__(self,spawn,origin=None,branch=None,type=None):
+    def __init__(self,spawn,origin=None,branch=None,type=None,output='screen'):
         """Initialize the class with spwan file"""
+        self.output=output
         if spawn[0]!='/': # Sets it to full path
             pwd = os.getcwd()
             print pwd
@@ -103,7 +105,10 @@ class CMIP5(object):
         return self.origin
 
     def genXml(self):
-        f=open("crap.xml","w")
+        if self.output=='screen':
+            f=sys.stdout
+        else:
+            f=open(self.output,"w")
         print >> f, """<?xml version="1.0"?>
         <!DOCTYPE dataset SYSTEM "http://www-pcmdi.llnl.gov/software/cdms/cdml.dtd">
         <dataset
@@ -120,8 +125,15 @@ class CMIP5(object):
                 nvars.append(V)
         # Find common path
         cmndir = commonprefix(self.spawn.id,self.origin.id)+"/"
-        print cmndir
-        cdmsfmp="[[%s,[[-,-,-,-,-,%s]]],[%s,[[0,%i,-,-,-,%s],[%i,%i,-,-,-,%s]]]]" % (str(nvars),self.spawn.id.split(cmndir)[1],str(tvars),self.branch,self.origin.id.split(cmndir)[1],self.branch,self.branch+len(self.spawn[tvars[0]].getTime()),self.spawn.id.split(cmndir)[1])
+        if cmndir=='/':
+            cmndir=""
+            f1 = self.spawn.id
+            f2 = self.origin.id
+        else:
+            f1 = self.spawn.id.split(cmndir)[1]
+            f2 = self.origin.id.split(cmndir)[1]
+        print cmndir,"*****",f1,"*****",f2,"xxxxx",nvars,"xxxx",tvars
+        cdmsfmp="[[%s,[[-,-,-,-,-,%s]]],[%s,[[0,%i,-,-,-,%s],[%i,%i,-,-,-,%s]]]]" % (str(nvars),f1,str(tvars),f2,self.branch,self.branch+len(self.spawn[tvars[0]].getTime()),f1)
         ## ok get info from spawn
         specials = ['institution','calendar','frequency','Conventions','history']
         for a in specials:
@@ -257,7 +269,7 @@ def loadProject(project,*pargs,**kargs):
 project = None
 # figures out the source
 if args.origin is None or args.branch is None:
-    project = loadProject(args.project,args.spawn,origin=args.origin,branch=args.branch,type=args.type)
+    project = loadProject(args.project,args.spawn,origin=args.origin,branch=args.branch,type=args.type,output=args.output)
     spawn = getattr(project.spawn,"uri",project.spawn.id)
     origin = getattr(project.origin,"uri",project.origin.id)
     branch = project.branch
@@ -272,7 +284,7 @@ tmpnm='tmp.xml'
 
 # print "done?",
 
-def span(file,var='ts'):
+def span(file,var='y'):
     tc = file[var].getTime().asComponentTime()
     print tc[0],tc[-1]
     return tc
