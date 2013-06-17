@@ -130,46 +130,46 @@ endif()
 
 if(GIT_PROTOCOL MATCHES "http://")
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} config --unset url.git://github.com/ajdawson/eof2.git.insteadof http://github.com/ajdawson/eof2.git
+    COMMAND ${GIT_EXECUTABLE} config --global url.http://github.com/ajdawson/eof2.git.insteadof git://github.com/ajdawson/eof2.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
   )
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} config --unset url.git://github.com/ajdawson/eofs.git.insteadof http://github.com/ajdawson/eofs.git
+    COMMAND ${GIT_EXECUTABLE} config --global url.http://github.com/ajdawson/eofs.git.insteadof git://github.com/ajdawson/eofs.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
  )
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} config --unset url.git://uv-cdat.llnl.gov/windfield.git.insteadof http://uv-cdat.llnl.gov/git/windfield.git
+    COMMAND ${GIT_EXECUTABLE} config --global --unset url.git://uv-cdat.llnl.gov/windfield.git.insteadof http://uv-cdat.llnl.gov/git/windfield.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
   )
   execute_process(
-      COMMAND ${GIT_EXECUTABLE} config --unset url.git://github.com/UV-CDAT/scimake.git.insteadof http://github.com/UV-CDAT/scimake.git
+      COMMAND ${GIT_EXECUTABLE} config --global url.http://github.com/UV-CDAT/scimake.git.insteadof git://github.com/UV-CDAT/scimake.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
     )
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} config --unset url.git://github.com/ajdawson/windspharm.git.insteadof http://github.com/ajdawson/windspharm.git
+    COMMAND ${GIT_EXECUTABLE} config --global url.http://github.com/ajdawson/windspharm.git.insteadof git://github.com/ajdawson/windspharm.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
  )
 else()
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} config url.git://github.com/ajdawson/eof2.git.insteadOf http://github.com/ajdawson/eof2.git
+    COMMAND ${GIT_EXECUTABLE} config --global --unset url.http://github.com/ajdawson/eof2.git.insteadof git://github.com/ajdawson/eof2.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
   )
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} config url.git://github.com/ajdawson/eofs.git.insteadOf http://github.com/ajdawson/eofs.git
+    COMMAND ${GIT_EXECUTABLE} config --global --unset url.http://github.com/ajdawson/eofs.git.insteadof git://github.com/ajdawson/eofs.git
+    WORKING_DIRECTORY ${cdat_SOURCE_DIR}
+ )
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} config --global url.git://uv-cdat.llnl.gov/windfield.git.insteadof http://uv-cdat.llnl.gov/git/windfield.git
+    WORKING_DIRECTORY ${cdat_SOURCE_DIR}
+  )
+  execute_process(
+      COMMAND ${GIT_EXECUTABLE} config --global --unset url.http://github.com/UV-CDAT/scimake.git.insteadof git://github.com/UV-CDAT/scimake.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
     )
   execute_process(
-    COMMAND ${GIT_EXECUTABLE} config url.git://uv-cdat.llnl.gov/windfield.git.insteadOf http://uv-cdat.llnl.gov/git/windfield.git
+    COMMAND ${GIT_EXECUTABLE} config --global --unset url.http://github.com/ajdawson/windspharm.git.insteadof git://github.com/ajdawson/windspharm.git
     WORKING_DIRECTORY ${cdat_SOURCE_DIR}
-  )
-  execute_process(
-      COMMAND ${GIT_EXECUTABLE} config url.git://github.com/UV-CDAT/scmake.git.insteadOf http://github.com/UV-CDAT/scimake.git
-    WORKING_DIRECTORY ${cdat_SOURCE_DIR}
-  )
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} config url.git://github.com/ajdawson/windspharm.git.insteadOf http://github.com/ajdawson/windspharm.git
-    WORKING_DIRECTORY ${cdat_SOURCE_DIR}
-  )
+ )
 endif()
 
 # Initialize submodules
@@ -199,10 +199,14 @@ if(CMAKE_Fortran_COMPILER)
 endif(CMAKE_Fortran_COMPILER)
 
 
-# Set bulid related properties
+# Set build related properties
 #-----------------------------------------------------------------------------
 set(PARTS_BUILT_INFO "${cdat_BINARY_DIR}/build_info.txt" CACHE STRING "File where to store build infos" FORCE)
 option(CDAT_BUILD_PARALLEL "Build parallel components of CDAT" ON)
+#OPtion to choose between easy_install and pip (crunchy ssl/man in the middle prevents us to use pip here...
+set(EGG_INSTALLER "PIP" CACHE STRING "Which package installer to use") 
+set_property(CACHE EGG_INSTALLER PROPERTY STRINGS "PIP" "EASY_INSTALL")
+set(PIP_CERTIFICATE "" CACHE STRING "Certificate to use for PIP (LLNL issue really)")
 #Options for various types of builds
 option(CDAT_BUILD_GUI "Builds GUI-based dependencies (Vistrails, ParaView, VisIt, R, etc...) " ON)
 option(CDAT_BUILD_GRAPHICS "Build graphics-based dependencies (vcs, pyqt, Vistrails, ParaView, VisIt, R, etc...) " ON)
@@ -379,6 +383,8 @@ include(r_pkg)
 include(scikits_pkg)
 include(scipy_pkg)
 include(setuptools_pkg)
+include(distribute_pkg)
+include(pip_pkg)
 include(shapely_pkg)
 include(sip_pkg)
 include(sphinx_pkg)

@@ -5549,7 +5549,7 @@ Options:::
             # Pointer to the plotted slab of data and the VCS Canas display infomation. 
             # This is needed to find the animation min and max values and the number of 
             # displays on the VCS Canvas.
-            self.animate_info.append( (result, arglist[0]) )
+            self.animate_info.append( (result, arglist[:2]) )
             self.animate.update_animate_display_list( )
         else:
             result = dn
@@ -6499,6 +6499,7 @@ Options:::
     a.portrait(x=100, y = 200) # Change to portrait and set the x and y screen position
     a.portrait(width = 337, height = 400, x=100, y = 200, clear=1) # Chagne to portrait and give specifications
 """ 
+        print "Portrait is: ",self.orientation()
         if (self.orientation() == 'portrait'): return
 
         if ( ((not isinstance(width, IntType))) or ((not isinstance(height, IntType))) or
@@ -6607,6 +6608,7 @@ Options:::
         H = int(height*dpi*sfactor)
 
         # if portrait then switch
+        print "ISPORTRAIT:",self.isportrait()
         if self.isportrait() and W>H:
             tmp = W
             W= H
@@ -8358,7 +8360,7 @@ def change_date_time(tv, number):
 # Animate wrapper for VCS.                                                  #
 #                                                                           #
 #############################################################################
-class animate_obj:
+class animate_obj_old:
    """
  Function: animate
 
@@ -8452,6 +8454,7 @@ class animate_obj:
                maxv.append( -1.0e77 )
             for i in range(len(self.vcs_self.animate_info)):
                dpy, slab = self.vcs_self.animate_info[i]
+               print "slab:",slab
                mins, maxs = minmax(slab)
                minv[i] = float(minimum(float(minv[i]), float(mins)))
                maxv[i] = float(maximum(float(maxv[i]), float(maxs)))
@@ -8786,7 +8789,7 @@ class animate_obj:
          self.vcs_self.canvas.animate_stop()
       elif (self.create_flg == 1):
          self.vcs_self.canvas.animate_stop_create()
-
+	
    ##############################################################################
    # View the specified animation frame                          		#
    ##############################################################################
@@ -8919,6 +8922,118 @@ class animate_obj:
          a = _animationgui.create(self, gui_parent, transient)
          return a
 
+class animate_obj(animate_obj_old):
+    def __init__(self, vcs_self):
+        animate_obj_old.__init__(self,vcs_self)
+        self.pause_value = .1
+        self.zoom_factor = 1.
+        self.vertical_factor = 0
+        self.horizontal_factor = 0
+
+    def create( self, parent=None, min=None, max=None, save_file=None, thread_it = 1, rate=5., bitrate=None, ffmpegoptions='', axis=0):
+        alen = None
+        y=vcs.init()
+        print "after creating y is:",y.isportrait()
+        dims = self.vcs_self.canvasinfo()
+        print "Dims:",dims
+        if dims['height']<500:
+            factor = 2
+        else:
+            factor=1
+        print "Setting bg dims to: %ix%i" % (dims["width"],dims["height"])
+        if dims["width"]<dims["height"]:
+            print "ok trying to switch to portrait!!!"
+            y.portrait(width=dims["width"],height=dims["height"])
+        y.setbgoutputdimensions(width = dims['width']*factor,height=dims['height']*factor,units='pixel')
+        truncated = False
+        print len(self.vcs_self.animate_info)
+        for I in self.vcs_self.animate_info:
+            print I[1][0].shape
+            if alen is None:
+                alen = I[1][0].shape[axis]
+            else:
+                l = I[1][0].shape[axis]
+                print l,alen
+                if l!=alen:
+                    alen = numpy.minimum(alen,l)
+                    truncated = True
+        if truncated:
+            warnings.warn("Because of inconsistent shapes over axis: %i, the animation length will be truncated to: %i\n" % (axis,alen))
+        self.animation_files = []
+        for i in range(alen):
+            print i,'of',alen-1
+            y.clear()
+            for I in self.vcs_self.animate_info:
+                d=I[0]
+                kw={}
+                n = len(I[1][0].shape)
+                for j,id in enumerate(I[1][0].getAxisIds()):
+                    if j!=axis and j<n-2:
+                        kw[id]=slice(0,1)
+                    elif j==axis:
+                        kw[id]=slice(i,i+1)
+                    else:
+                        break
+                args = [I[1][0](**kw),]
+                if I[1][1] is not None:
+                    kw={}
+                    n = len(I[1][1].shape)
+                    for j,id in enumerate(I[1][1].getAxisIds()):
+                        if j!=axis and j<n-2:
+                            kw[id]=slice(0,1)
+                        elif j==axis:
+                            kw[id]=slice(i,i+1)
+                        else:
+                            break
+                    args.append(I[1][1](**kw))
+                args += [d.template,d.g_type,d.g_name]
+                y.plot(*args,bg=1)    
+            fn = tempfile.mkstemp(suffix=".png")[1]
+            self.animation_files.append(fn)
+            y.png(fn)
+            y.png("sample")
+    def runner(self):
+        self.runit = True
+        while self.runit:
+            for fn in self.animation_files:
+                if not self.runit:
+                    break
+                self.vcs_self.canvas.put_png_on_canvas(fn,self.zoom_factor,self.vertical_factor,self.horizontal_factor)
+                import time
+                time.sleep(self.pause_value)
+    def run(self,*args):
+        #self.runner()
+        self.runthread = thread.start_new_thread(self.runner,())
+
+    def draw(self, frame):
+        self.vcs_self.clear()
+        self.vcs_self.canvas.put_png_on_canvas(self.animation_files[frame],
+                                               self.zoom_factor,self.vertical_factor,self.horizontal_factor)
+        
+    def frame(self, frame):
+        self.draw(frame)
+
+    def save(self,movie,bitrate=1024, rate=None, options=''):
+        self.vcs_self.ffmpeg(movie, self.animation_files, bitrate, rate, options)
+
+    def number_of_frames(self):
+        return len(self.animation_files)
+
+    def stop(self):
+        print "Stopping"
+        self.runit = False
+    def pause(self,value):
+        self.pause_value = value
+
+    def zoom(self,value):
+        self.zoom_factor = value
+    def horizontal(self,value):
+        self.horizontal_factor = value
+
+    def vertical(self,value):
+        self.vertical_factor = value
+
+    
 ############################################################################
 #        END OF FILE                                                       #
 ############################################################################
