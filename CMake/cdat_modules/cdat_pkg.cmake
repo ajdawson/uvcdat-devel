@@ -2,6 +2,7 @@ set(cdat_VERSION_MAJOR 1)
 set(cdat_VERSION_MINOR 3)
 set(cdat_VERSION_PATCH 1)
 set(cdat_VERSION ${cdat_VERSION_MAJOR}.${cdat_VERSION_MINOR}.${cdat_VERSION_PATCH})
+set(CDAT_SOURCE N/A)
 
 # configure version file
 set (nm cdat_VERSION)

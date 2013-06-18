@@ -9,6 +9,9 @@ set(LAPACK_MD5 02d5706ec03ba885fc246e5fa10d8c70)
 set (nm LAPACK)
 string(TOUPPER ${nm} uc_nm)
 set(${uc_nm}_VERSION ${${nm}_MAJOR_SRC}.${${nm}_MINOR_SRC}.${${nm}_PATCH_SRC})
+set(LAPACK_SOURCE ${LAPACK_URL}/${LAPACK_GZ})
+
+
 if(NOT APPLE)
   if(CMAKE_Fortran_COMPILER)
     add_cdat_package(LAPACK "" "" "")
