@@ -5,5 +5,6 @@ set(ZMQ_VERSION ${ZMQ_MAJOR}.${ZMQ_MINOR}.${ZMQ_PATCH})
 set(ZMQ_URL ${LLNL_URL})
 set(ZMQ_GZ zeromq-${ZMQ_VERSION}.tar.gz)
 set(ZMQ_MD5 05fc17610630e952d29efe7564828888)
+set(ZMQ_SOURCE ${ZMQ_URL}/${ZMQ_GZ})
 
 add_cdat_package(ZMQ)
