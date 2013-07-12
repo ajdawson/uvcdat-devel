@@ -15,6 +15,7 @@ if (NOT ${res} EQUAL 0)
 else ()
     set(cdat_VERSION ${ver})
 endif()
+set(CDAT_SOURCE N/A)
 
 # configure version file
 set (nm cdat_VERSION)
